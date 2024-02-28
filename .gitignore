@@ -1,0 +1,15 @@
+*.pyc
+src/taskdatasets/miniimagenet/*.pkl
+src/taskdatasets/cubirds/cub
+figures
+experiments
+wandb
+logs
+clip
+temp
+.idea
+.vscode
+sync_servers.sh
+__pycache__
+pretrained_ckpts
+cached_val_tasks
