@@ -205,7 +205,7 @@ def get_finetune_model(finetune):
     elif finetune == "lora":
         BaseClass = LoRAPMF
     else:
-        raise NotImplementedError, finetune
+        raise NotImplementedError(finetune)
 
     class Finetune(BaseClass):
         def __init__(self, net: nn.Module, args: Configuration):

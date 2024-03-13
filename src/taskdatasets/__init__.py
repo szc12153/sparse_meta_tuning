@@ -12,7 +12,7 @@ import random
 import numpy as np
 
 
-AVAILABLE_DATASETS={
+AVAILABLE_FEWSHOT_DATASETS={
     "pet": PetDataset,
     "food": FoodDataset,
     "sketch" :DomainnetTuneDataset,
@@ -22,20 +22,19 @@ AVAILABLE_DATASETS={
     "clipart": DomainnetTuneDataset,
     "quickdraw" : DomainnetTuneDataset,
     "painting": DomainnetTuneDataset,
-    "meta_dataset": MetaDataset
 }
 
-AVAILABLE_DATASETS_PATH={
-    "cars": 'path',
-    "pet": 'path',
-    "food": 'path',
-    "country": 'path',
-    "sketch" :'path',
-    "real": 'path',
-    "infograph": 'path',
-    "clipart": 'path',
-    "quickdraw" : 'path',
-    "painting": 'path',
+AVAILABLE_FEWSHOT_DATASETS_PATH={
+    "cars": None,
+    "pet": None,
+    "food": None,
+    "country": None,
+    "sketch" : None,
+    "real": None,
+    "infograph": None,
+    "clipart": None,
+    "quickdraw" : None,
+    "painting": None,
 }
 
 def get_fewshot_taskloaders(dataset_names, split, input_size, n_ways,k_shots,k_queries, batch_size, train_val_shots=-1, aug=False)->dict:
@@ -44,8 +43,8 @@ def get_fewshot_taskloaders(dataset_names, split, input_size, n_ways,k_shots,k_q
         dataset_transform = ClassSplitter(shuffle=True,
                                       num_train_per_class=k_shots,
                                       num_test_per_class=k_queries)
-        dataset = AVAILABLE_DATASETS[name]
-        task_dataset = dataset(root=AVAILABLE_DATASETS_PATH[name],
+        dataset = AVAILABLE_FEWSHOT_DATASETS[name]
+        task_dataset = dataset(root=AVAILABLE_FEWSHOT_DATASETS_PATH[name],
                                meta_split=split,
                                transform=dataset.get_transform(split,input_size, aug=aug),
                                target_transform=Categorical(n_ways),

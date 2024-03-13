@@ -377,9 +377,11 @@ if __name__ == "__main__":
 
     set_random_seed(seed=args.seed, deterministic=True)
     assert args.checkpoint
-    configs = load_config_from_yaml(file_path="/"+os.path.join(*args.checkpoint.split("/")[:-2],
-                                                           "exp_configs.yaml"),
-                                    safe_load=False)
+    config_file_path = os.path.join(*args.checkpoint.split("/")[:-2],"exp_configs.yaml")
+    # if path starts from the root
+    if args.checkpoint.startswith('/'):
+        config_file_path = "/"+config_file_path
+    configs = load_config_from_yaml(file_path=config_file_path,safe_load=False)
     # test configurations
     configs.devices = ["cuda:0","cuda:0"]
     configs.aug = args.aug
@@ -429,7 +431,7 @@ if __name__ == "__main__":
         assert configs.test.num_ways > 1
         assert configs.test.num_shots > 0
         logger.warning(f"{configs.test.num_ways}-ways-{configs.test.num_shots}-shots Experiment")
-        configs.test.datasets = ("pet","food","cars","sketch",)
+        configs.test.datasets = ("sketch","clipart","food","pet","cars",)
         if args.test_datasets:
             configs.test.datasets = args.test_datasets
         FewShotDataManager.get_datalaoder = get_fewshot_taskloaders
