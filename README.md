@@ -15,14 +15,16 @@ For meta-training and meta-testing on the [Meta-dataset](https://github.com/goog
 
 ### Experiments
 #### Before meta-training
-> `export mdh5_path=PATH/TO/DOWNLOADED_METADATASET_h5Files`\
-> `ulimit -n 50000` 
-> 
+ ```
+ export mdh5_path=PATH/TO/DOWNLOADED_METADATASET_h5Files
+ ulimit -n 50000 
+ ```
 
 
 #### Meta-training 
-> 
-> `python -m src.trainer --yaml md_smat --seed 0`
+```
+python -m src.trainer --yaml md_smat --seed 0
+```
 
 - The full lists of hyperparameters used for the experiments can be found in the *config* directory. 
 - Your runs / training logs / testing results will all be saved in a directory called _experiments_ by default. To change this default option, please modify the _logging_ variables in the config.yaml file. 
@@ -44,6 +46,16 @@ CUDA_VISIBLE_DEVICES=gpu_id python -m src.tests.md_few_shot --tasks md --hps --a
 
 ### Citation
 If you find this repository useful in your research, please consider citing our paper:
+```
+@misc{chen2024unleashing,
+      title={Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts}, 
+      author={Shengzhuang Chen and Jihoon Tack and Yunqiao Yang and Yee Whye Teh and Jonathan Richard Schwarz and Ying Wei},
+      year={2024},
+      eprint={2403.08477},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV}
+}
+```
 
 
 ### Contact
