@@ -240,7 +240,7 @@ class MetaTrainer:
             source_label = task[-1] if self.args.train.source_info else y_q.new((1,)).fill_(-1)
             with torch.cuda.amp.autocast(self.args.train.fp16):
                 res_dict = self.learner(x_s, y_s, x_q, y_q=None, source_label = source_label)
-            accuracy_traj.append((torch.stack(res_dict["y_q_pred"]).argmax(dim=-1)==y_q.view(1,-1)).float().mean(dim=-1)) # n_steps
+            accuracy_traj.append((torch.stack(res_dict["y_q_pred"]).to(self.devices[1]).argmax(dim=-1)==y_q.to(self.devices[1]).view(1,-1)).float().mean(dim=-1)) # n_steps
             self.datasetroutine.set_pbar_description(f'{dataset:<12} : sparsity : {res_dict["train/sparsity"][-1].item():.3f} accuracy {accuracy_traj[-1][-1].item():.3f}')
             # break in case if we have an infinite sequence
             if task_counter+1>=n_tasks:
@@ -435,7 +435,7 @@ if __name__ =="__main__":
 
     set_random_seed(seed=args.seed, deterministic=True)
 
-    os.environ['WANDB_MODE'] = 'disabled'
+    os.environ['WANDB_MODE'] = 'online'
     if args.wandb_disable:
         os.environ['WANDB_MODE'] = 'disabled'
     elif args.wandb_offline:

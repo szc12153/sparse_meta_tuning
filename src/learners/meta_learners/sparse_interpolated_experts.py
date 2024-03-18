@@ -72,8 +72,14 @@ class MasksCollection(nn.Module):
     def __init__(self, meta_params, num_masks, hid_dim, init_dropout_rate=0.0, structured_sparsity=False, bias_sparsity=True, stochastic_mask=True, fix_embeddigs=False, spectral_norm=True):
         super(MasksCollection, self).__init__()
         from src.learners.base_learners.torchhub_vit import Block
+        self.input_device = "cuda:0"
+        self.output_device = "cuda:1" if torch.cuda.device_count()>1 else "cuda:0"
         self.hid_dim = hid_dim
         self.key_dim = hid_dim
+        self.epsilon = 1e-6
+        self.beta=2/3
+        self.zeta=1.1
+        self.gamma=-0.1
         self.num_masks = num_masks
         self._initalize_masks(num_masks,
                               meta_params=meta_params,
@@ -82,16 +88,16 @@ class MasksCollection(nn.Module):
                               structured_sparsity=structured_sparsity,
                               bias_sparsity=bias_sparsity,
                               fix_embeddigs=fix_embeddigs)
+       
 
-        self.masks_keys = nn.Parameter(nn.init.kaiming_normal_(torch.FloatTensor(num_masks, self.key_dim)), requires_grad=True)
-        self.count_encoding = nn.Parameter(nn.init.kaiming_normal_(torch.FloatTensor(1, 1, self.key_dim)), requires_grad=True)
-        self.input_embed_proj = nn.Linear(384, hid_dim)
-        self.skills_tokens = nn.Parameter(nn.init.normal_(torch.FloatTensor(1, 4, self.key_dim), std=1e-3), requires_grad=True)
+        self.masks_keys = nn.Parameter(nn.init.kaiming_normal_(torch.FloatTensor(num_masks, self.key_dim)), requires_grad=True).to(self.input_device)
+        self.count_encoding = nn.Parameter(nn.init.kaiming_normal_(torch.FloatTensor(1, 1, self.key_dim)), requires_grad=True).to(self.input_device)
+        self.skills_tokens = nn.Parameter(nn.init.normal_(torch.FloatTensor(1, 4, self.key_dim), std=1e-3), requires_grad=True).to(self.input_device)
         self.task_embed_agg = Block(dim=hid_dim,
                                     num_heads=4,
                                     mlp_ratio=2,
-                                    )
-
+                                    ).to(self.input_device)
+        
         if spectral_norm:
             sn = nn.utils.spectral_norm
 
@@ -104,10 +110,6 @@ class MasksCollection(nn.Module):
 
             self.apply(_add_sn)
 
-        self.epsilon = 1e-6
-        self.register_buffer("zeta", torch.tensor(1.1))
-        self.register_buffer("gamma", torch.tensor(-0.1))
-        self.sampled_masks_collection = None
         ## count the number of trainable parameters
         p_count = 0
         for p in self.parameters():
@@ -165,11 +167,10 @@ class MasksCollection(nn.Module):
                 self.param_name_2_log_alpha_scale[param_n] = (log_alpha_idx, dim_scale, expand_to_shape)
                 log_alpha_idx += 1
 
-        self.register_buffer("beta", torch.tensor(2 / 3, requires_grad=False))
-        self.register_buffer("zeta", torch.tensor(1.1, requires_grad=False))
-        self.register_buffer("gamma", torch.tensor(-0.1, requires_grad=False))
-        self.register_buffer("use_hard_masks", torch.tensor(0, requires_grad=False))
-        self.epsilon = 1e-6
+        # self.register_buffer("beta", torch.tensor(2 / 3, requires_grad=False))
+        # self.register_buffer("zeta", torch.tensor(1.1, requires_grad=False))
+        # self.register_buffer("gamma", torch.tensor(-0.1, requires_grad=False))
+        # self.register_buffer("use_hard_masks", torch.tensor(0, requires_grad=False))
         self.stochastic_mask = stochastic_mask
         self.fix_embeddings = fix_embeddigs
         # check everything is okay
@@ -178,7 +179,7 @@ class MasksCollection(nn.Module):
             mask, sparsity = self._sample_all_masks(fast_log_alphas)
             expected_z = 0
             for i, v in enumerate(mask.values(), 1):
-                expected_z += v.flatten(end_dim=-2).mean(dim=0)
+                expected_z += v.flatten(end_dim=-2).mean(dim=0).cpu()
             sp_loss = self.sparse_penalty(log_alphas=fast_log_alphas)
             for m, masks_infos in enumerate(zip(sparsity, expected_z, sp_loss)):
                 sp, z, spl = masks_infos
@@ -198,7 +199,7 @@ class MasksCollection(nn.Module):
         """
         on_aprior = ["head"]  # the head is always on
         masks = {}
-        non_zero, total = torch.tensor([0.0] * self.num_masks, device=self.beta.device), 0.0
+        non_zero, total = torch.tensor([0.0] * self.num_masks, device=self.output_device), 0.0
 
         for net_param_name, idx_scale_reshape in self.param_name_2_log_alpha_scale.items():
             log_alpha_idx, dim_scale, expand_to_shape = idx_scale_reshape
@@ -212,10 +213,10 @@ class MasksCollection(nn.Module):
                 masks[net_param_name] = torch.ones_like(log_alpha)
                 non_zero += log_alpha.numel() * dim_scale
                 total += log_alpha.numel() * dim_scale
-            elif log_alpha_idx is None:
-                masks[net_param_name] = torch.ones(1, device=self.zeta.device)
-                non_zero += dim_scale / self.num_masks
-                total += dim_scale
+            # elif log_alpha_idx is None:
+            #     masks[net_param_name] = torch.ones(1, device=self.zeta.device)
+            #     non_zero += dim_scale / self.num_masks
+            #     total += dim_scale
             else: # sample a mask from the variational distribution
                 log_alpha = log_alphas[f"log_alphas.{log_alpha_idx}"]
                 if self.training and self.stochastic_mask:
@@ -230,10 +231,8 @@ class MasksCollection(nn.Module):
                 s = F.sigmoid((log_u + log_alpha) / beta)
                 s_bar = s * (self.zeta - self.gamma) + self.gamma
                 z = F.hardtanh(s_bar, min_val=0, max_val=1)
-                non_zero += torch.greater(z, torch.tensor([0.], dtype=z.dtype, device=z.device)).view(-1, self.num_masks).sum(dim=0) * dim_scale
+                non_zero += torch.greater(z, 0).view(-1, self.num_masks).sum(dim=0).to(self.output_device) * dim_scale
                 total += log_alpha.numel() * dim_scale
-                # if self.hard_mask:
-                #     z = torch.greater(z, 0).float() # convert to {0,1}
                 if expand_to_shape:
                     z = z.expand(*expand_to_shape)
                 masks[net_param_name] = z
@@ -247,25 +246,18 @@ class MasksCollection(nn.Module):
         return F.sigmoid(logits * self.beta - log_alpha).clamp(min=self.epsilon, max=1 - self.epsilon)
 
     def sparse_penalty(self, log_alphas: dict):
-        expcted_l0 = torch.tensor([0.0] * self.num_masks, device=self.beta.device)
+        expcted_l0 = torch.tensor([0.0] * self.num_masks, device=self.output_device)
         normalizer = 0  # normalize by the number of model parameters
         for log_alpha_name, log_alpha in log_alphas.items():
             # 1 - cdf(0)
             dim_scale = self.log_alpha_2_scale[log_alpha_name]
             mins_cdf = 1.0 - self.cdf_qz(tau=0, log_alpha=log_alpha)
-            expcted_l0 += (mins_cdf * dim_scale).flatten(end_dim=-2).sum(dim=0)
+            expcted_l0 += (mins_cdf * dim_scale).flatten(end_dim=-2).sum(dim=0).to(self.output_device)
             normalizer += log_alpha.numel() * dim_scale / self.num_masks
         return expcted_l0 / normalizer  # this makes penalty always within [0,1]
 
     def lp_penalty(self, masks, named_params, structured=False, p=1):
         raise NotImplementedError
-
-    def clip_log_alpha(self):
-        for log_alpha in self.log_alphas:
-            log_alpha.data.clamp_(min=math.log(0.01), max=math.log(100))
-
-    def get_fast_params(self, **kwargs):
-        return {n: p.clone().requires_grad_(True) for n, p in self.named_parameters() if "log_alphas" in n}
 
     def _get_mask_attribute_for_net_param(self, net_param_name):
         """debug function, not used in training -> mask.shape, dim_scale"""
@@ -286,7 +278,7 @@ class MasksCollection(nn.Module):
         # get task mean, protoype, and prototype variance
         with torch.no_grad():
             n_classes = y_s.max() + 1
-            x_s_f = probe_model(x_s, True, )  # input args are (x_s, return_features_only)
+            x_s_f = probe_model(x_s, True, ).to(x_s.device)  # input args are (x_s, return_features_only)
             tokens, counts = [], []
             y_s_1hot = F.one_hot(y_s, n_classes).T  # nC, nSupp
             prototypes = torch.mm(y_s_1hot.float(), x_s_f)  # nC, feat_dim
@@ -324,24 +316,24 @@ class MasksCollection(nn.Module):
         assert len(scores) == self.num_masks, scores.shape
         merged_masks = {}
         non_zero, total, merged_flag = 0.0, 0.0, False
-        union_loss = torch.tensor([0.], device=scores.device)
+        union_loss = torch.tensor([0.], device=self.output_device)
         # sample 2 index
-        if self.num_masks > 1:
-            union_loss_prob = torch.nan_to_num(F.relu(scores.detach())) + 1e-4
-            union_loss_idx = torch.multinomial(union_loss_prob, replacement=False, num_samples=2)
-            union_loss_scores = F.one_hot(union_loss_idx, num_classes=self.num_masks).sum(dim=0)
-        else:
-            union_loss_scores = torch.zeros_like(scores,requires_grad=False)
+        # if self.num_masks > 1:
+        #     union_loss_prob = torch.nan_to_num(F.relu(scores.detach())) + 1e-4
+        #     union_loss_idx = torch.multinomial(union_loss_prob, replacement=False, num_samples=2)
+        #     union_loss_scores = F.one_hot(union_loss_idx, num_classes=self.num_masks).sum(dim=0)
+        # else:
+        #     union_loss_scores = torch.zeros_like(scores,requires_grad=False)
         # mask_overlap
         sampled_masks, mask_sparsities = self._sample_all_masks(log_alphas=log_alphas_collections)
         for param_name, m in sampled_masks.items():
             if "head" in param_name:
                 param_mask = torch.ones_like(m, requires_grad=False).mean(dim=-1) 
             else:
-                param_mask = torch.mul(m, scores).sum(dim=-1)  # weighted sum of all masks
-            union_loss += torch.mul(m, union_loss_scores).sum()
+                param_mask = torch.mul(m, scores.to(m.device)).sum(dim=-1)  # weighted sum of all masks
+            # union_loss += torch.mul(m, union_loss_scores).sum()
             total += param_mask.numel()
-            non_zero += torch.greater(param_mask, 0).float().sum()  
+            non_zero += torch.greater(param_mask, 0).float().sum().to(self.output_device)  
             merged_masks[param_name] = param_mask
         merged_sparsity = 1. - non_zero / total
         union_loss /= total
@@ -358,6 +350,9 @@ class MasksCollection(nn.Module):
     def clip_log_alpha(self):
         for log_alpha in self.get_trainable_mask_parameters():
             log_alpha.data.clamp_(min=math.log(0.01), max=math.log(100))
+
+    def get_fast_params(self, **kwargs):
+        return {n: p.clone().requires_grad_(True) for n, p in self.named_parameters() if "log_alphas" in n}
 
     def get_trainable_mask_parameters(self):
         for n, p in self.named_parameters():
@@ -376,13 +371,27 @@ class SparseInterpolatedExperts(nn.Module):
         self.args = args
         for p in net.parameters():
             p.requires_grad_(False)
+
+        self.input_device = "cuda:0"
+        self.output_device = "cuda:1" if torch.cuda.device_count()>1 else "cuda:0"
+        logger.info(f"{'DEVICE MAPPING':<60} || {'DEVICE':<15}")
+        _CUDA1_KEYS = ["head.",".norm.","encoder_norm."]+[f".blocks.{b}." for b in range(6,12)] +[f".layer.{b}." for b in range(6,12)]
+        for n,p in net.named_parameters():
+            p.requires_grad_(False)
+            if any(_ in n for _ in _CUDA1_KEYS):
+                p.data = p.data.to(self.output_device)
+                logger.info(f"{n:<60} || {self.output_device:<15}")
+            else:
+                p.data = p.data.to(self.input_device)
+                logger.info(f"{n:<60} || {self.input_device:<15}")
+
         self.net = net
         self.nonparametric_head = net.nonparametric_head
         self.inner_param_names = {n: 1 for n, _ in net.inner_meta_params()}
         # delta_params wil alwways include all trainable parameters
         self.delta_hypernet = DeltaParams(meta_params=net.outer_meta_params())
         self.num_masks = args.meta_learner.sparsity.num_experts
-        self.hid_dim = 384
+        self.hid_dim = net.feat_dim
         self.mask_hypernet = MasksCollection(meta_params=list(net.outer_meta_params()),
                                              num_masks=self.num_masks,
                                              hid_dim=self.hid_dim,
@@ -393,9 +402,11 @@ class SparseInterpolatedExperts(nn.Module):
                                              fix_embeddigs=args.meta_learner.sparsity.fix_embeddings)
         # learnable lrs for delta_params and grad_mask_params
         self.lrs = args.meta_learner.inner_lr.lr
-        self.lagrangian_multiplier = nn.Parameter(torch.FloatTensor(self.num_masks).fill_(0), requires_grad=True)
+        self.lagrangian_multiplier = nn.Parameter(torch.FloatTensor(self.num_masks).fill_(0)).to(self.output_device).detach().clone().requires_grad_(True)
         self.register_buffer("mask_sparsity_targets", torch.tensor([args.meta_learner.sparsity.target] * self.num_masks))
+        self.mask_sparsity_targets = self.mask_sparsity_targets.to(self.output_device)
         self.register_buffer("num_metaupdates", torch.tensor([0.0]))
+        self.num_metaupdates = self.num_metaupdates.to(self.input_device)
 
     def _interpolate_params(self, masks: dict, delta_params: dict, last_iter: bool = False) -> dict:
         combined_weights = {}
@@ -422,7 +433,7 @@ class SparseInterpolatedExperts(nn.Module):
         else:
             # use protomaml initalization for weights and bias, ( first order only)
             x_s_f = functional_call(self.net, fast_weight_init, (x_s, True,))  # input args are (x_s, return_features_only)
-            y_s_1hot = F.one_hot(y_s, n_classes).T  # nC, nSupp
+            y_s_1hot = F.one_hot(y_s, n_classes).T.to(self.output_device)  # nC, nSupp
             prototypes = torch.mm(y_s_1hot.float(), x_s_f)  # nC, feat_dim
             prototypes = prototypes / y_s_1hot.sum(dim=1, keepdim=True)
             weight = prototypes #2 * prototypes
@@ -462,7 +473,7 @@ class SparseInterpolatedExperts(nn.Module):
             inteporated_outer_params.update(fast_names_values)
         # support classification loss
         y_s_pred = functional_call(self.net, inteporated_outer_params, (x_s,))
-        support_loss = F.cross_entropy(input=y_s_pred, target=y_s)
+        support_loss = F.cross_entropy(input=y_s_pred, target=y_s.to(y_s_pred.device))
         # take one inner loop during training only, or disable for faster training
         if self.training: 
             grads = torch.autograd.grad(support_loss, inteporated_outer_params.values(), create_graph=False, retain_graph=False)
@@ -476,7 +487,7 @@ class SparseInterpolatedExperts(nn.Module):
 
         # logs_dict["y_s_pred"].append(y_s_pred.detach()) #TODO: dont include this in meta-training; otherwise this will cause an issue in logging to weighst and bias
         logs_dict["train/support_ce"].append(support_loss.detach())
-        logs_dict["train/support_accuracy"].append(accuracy(predictions=y_s_pred, targets=y_s))
+        logs_dict["train/support_accuracy"].append(accuracy(predictions=y_s_pred, targets=y_s.to(y_s_pred.device)))
         # logger.info(" ".join(f"{x:.3f}" for x in soft_selection_scores.detach().cpu().tolist()))
         return inteporated_outer_params, fast_log_alphas_collections, delta_params, soft_selection_scores, dot_attn_scores, task_embed, union_loss, logs_dict
 
@@ -619,7 +630,7 @@ class SparseInterpolatedExperts(nn.Module):
             logger.warning(f"entered optimization loop with model.eval()")
         else:
             self.num_metaupdates += 1
-
+        y_q = y_q.to(y_q_pred.device)
         #####################
         ### teacher model ###
         #####################
@@ -653,7 +664,7 @@ class SparseInterpolatedExperts(nn.Module):
                             F.log_softmax(y_q_pred / teach_T, dim=-1),
                             reduction="batchmean", 
                             log_target=True) * teach_T ** 2 * 0.5
-        prior_selection_loss = torch.pow(dot_attn_scores, 2).mean() * 1e-4 #penalize excessively large activation logits for stablized training
+        prior_selection_loss = torch.pow(dot_attn_scores.to(y_q_pred.device), 2).mean() * 1e-4 #penalize excessively large activation logits for stablized training
         query_acc = accuracy(y_q_pred, y_q)
 
         ####################################
@@ -668,8 +679,8 @@ class SparseInterpolatedExperts(nn.Module):
         delta_sparsities = mask_sparsities - self.mask_sparsity_targets
         fill_idx = torch.greater(delta_sparsities, 0).float()
         self.lagrangian_multiplier.data = self.lagrangian_multiplier.data * (1 - fill_idx) + torch.zeros_like(self.lagrangian_multiplier) * fill_idx
-        lagrangian = torch.sum(delta_sparsities * self.lagrangian_multiplier * mask_selection)
-        sparstiy_loss = torch.sum((self.mask_sparsity_targets - 1 + expected_l0s) * self.lagrangian_multiplier.detach() * mask_selection)
+        lagrangian = torch.sum(delta_sparsities * self.lagrangian_multiplier * mask_selection.to(self.output_device))
+        sparstiy_loss = torch.sum((self.mask_sparsity_targets - 1 + expected_l0s) * self.lagrangian_multiplier.detach() * mask_selection.to(self.output_device))
         # expected_l2 = torch.zeros_like(query_ce)
         ####################################
         ###    return loss and logging ###

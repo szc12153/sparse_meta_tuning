@@ -184,7 +184,8 @@ class VisionTransformer(nn.Module):
         trunc_normal_(self.pos_embed, std=.02)
         trunc_normal_(self.cls_token, std=.02)
         self.apply(self._init_weights)
-        self.input_device, self.output_device = kwargs.get("devices",["cuda:0","cuda:0"])
+        self.input_device = "cuda:0"
+        self.output_device = "cuda:1" if torch.cuda.device_count()>1 else "cuda:0"
 
     def _init_weights(self, m):
         if isinstance(m, nn.Linear):
