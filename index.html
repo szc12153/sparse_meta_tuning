@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN"
+"http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en">
+   <script> 
+
+        function previewImage(replace_id, new_src)
+        {
+            var img = document.getElementById(replace_id);
+            img.src=new_src;
+            return false;
+        }
+
+        function resetImage(replace_id, new_src=null)
+        {
+            var img = document.getElementById(replace_id);
+            if (new_src!==null){
+                resetImage.reset_to_img=new_src;
+                return false;
+            }  
+            img.src=resetImage.reset_to_img;
+            return false;
+        }
+        resetImage.reset_to_img="resources/overview.png"
+
+        function changeImage(replace_id, new_src){
+            var img = document.getElementById(replace_id);
+            img.src=new_src;
+            resetImage(replace_id, new_src);
+            return false;
+        }
+
+
+  </script>
+    
+
+
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>SMAT</title>
+    <meta name="author" content="SMAT" />
+    <meta name="generator" content="Org Mode" />
+    <style>
+        .title  { text-align: center;
+                 margin-bottom: .2em; }
+        .subtitle { text-align: center;
+                    font-size: medium;
+                    font-weight: bold;
+                    margin-top:0; }
+        .todo   { font-family: monospace; color: red; }
+        .done   { font-family: monospace; color: green; }
+        .priority { font-family: monospace; color: orange; }
+        .tag    { background-color: #eee; font-family: monospace;
+                   padding: 2px; font-size: 80%; font-weight: normal; }
+        .timestamp { color: #bebebe; }
+        .timestamp-kwd { color: #5f9ea0; }
+        .org-right  { margin-left: auto; margin-right: 0px;  text-align: right; }
+        .org-left   { margin-left: 0px;  margin-right: auto; text-align: left; }
+        .org-center { margin-left: auto; margin-right: auto; text-align: center; }
+        .underline { text-decoration: underline; }
+
+        .figure-slarge img {
+            width: 100%; /* width for large figure */
+            display: block;
+            margin: 0 auto; /* center image */
+        }
+
+        .figure-large img {
+            width: 75%; /* width for large figure */
+            display: block;
+            margin: 0 auto; /* center image */
+        }
+
+        .figure-medium img {
+            width: 50%; /* width for medium figure */
+            display: block;
+            margin: 0 auto; /* center image */
+        }
+
+        /* other figure styles can go here */
+
+        @media screen and (max-width: 650px) { /* adjust the pixel value based on your design */
+        .figure-slarge img, .figure-large img, .figure-medium img {
+            width: 100%; /* full width on smaller screens */
+            }
+        }
+
+        img {
+            max-width: 100%;
+            height: auto; /* Maintains the aspect ratio */
+            padding-right: 2%;
+            vertical-align: middle;
+        }
+
+        figure {
+            text-align: center;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        table { table-layout: fixed; }
+        td {
+            width: 50%;
+        }
+
+        body {
+            max-width: 1080px;
+            padding: 10px;
+            padding-top: 25px;
+            padding-bottom: 40px;
+            margin: 0 auto;
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 375;
+            background-color: #fdfdfd;
+            line-height: 1.3;
+        }
+
+        strong{
+            font-family: 'Noto Sans KR', sans-serif;
+            font-weight: 500;
+        }
+
+        h1 {
+            margin-top: 0;
+            line-height: 1;
+            font-weight: 500;
+        }
+
+        h2 {
+            border-bottom: 1px solid #ddd;
+            margin-top: 1.3em;
+            margin-bottom: 0em;
+            padding-bottom: 4px;
+            font-weight: 500;
+        }
+
+        li {
+           margin: 7px 0;
+          }
+
+        a { 
+            color:#1772d0; 
+            text-decoration-line: none;
+        }
+        a:hover {
+            color:#f09228; 
+        }
+
+        .footer {
+            padding-top: 10px;
+        }
+
+        .footer-cover {
+            background-color: #f5f5f5;
+            padding-left: 0;
+            padding-right: 0;
+            margin-top: 50px;
+            height: 80px;
+        }
+
+        .responsive-iframe {
+            width: 650px;
+            height: 350px;
+            max-width: 100%;
+            margin: auto; /* Center the iframe */
+        }
+
+        .responsive-iframe iframe {
+            width: 100%;
+            height: 100%;
+        }
+
+
+
+        /* CSS */
+        .button-80 {
+        background-color: #fff;
+        border: 0 solid #e2e8f0;
+        border-radius: 1.5rem;
+        box-sizing: border-box;
+        color: #0d172a;
+        cursor: pointer;
+        display: inline-block;
+        font-family: "Basier circle",-apple-system,system-ui,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Noto Sans",sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol","Noto Color Emoji";
+        font-size: 1.1rem;
+        font-weight: 600;
+        line-height: 1;
+        padding: 1rem 1.6rem;
+        text-align: center;
+        text-decoration: none #0d172a solid;
+        text-decoration-thickness: auto;
+        transition: all .1s cubic-bezier(.4, 0, .2, 1);
+        box-shadow: 0px 1px 2px rgba(166, 175, 195, 0.25);
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+        }
+
+        .button-80:hover {
+        background-color: #1e293b;
+        color: #fff;
+        }
+
+        .button-80:focus{
+        background-color: #1e293b;
+        color: #fff;
+        }
+
+        @media (min-width: 768px) {
+                .button-80 {
+                font-size: 1.125rem;
+                padding: 1rem 2rem;
+            }
+        } 
+
+        .button-container {
+            margin: auto;
+            width: 90%;
+            display: flex;
+        }
+
+        @media screen and (max-width: 650px){
+            .responsive-iframe {
+                max-width: 100%;
+            }
+            /* .button-80{
+                max-width: 50%;
+            } */
+        }
+
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/earlyaccess/notosanskr.css">
+  </head>
+  <body>
+  	<br>
+  	<br>
+  	<span style="font-size:26px; color:#000;">
+            <b>
+            	<center>
+                Unleashing the Power of Meta-tuning for Few-shot Generalization <br> Through Sparse Interpolated Experts 
+               </center>
+            </b>
+        </span>
+		</span>
+		<br>
+    <table align=center width=600px>
+        <tr>
+        <center>
+        <div style="font-size:18px; text-align: center">
+            <a href="https://openreview.net/profile?id=~Shengzhuang_Chen1">Shengzhuang Chen</a><sup>1</sup>, &nbsp; 
+            <a href="https://jihoontack.github.io">Jihoon Tack</a><sup>2</sup>, &nbsp; 
+            <a href="https://scholars.cityu.edu.hk/en/persons/yunqiao-yang(cdb8b84d-9096-46e6-abe1-6a8f0b5f30b8)/publications.html">Yunqiao Yang</a><sup>1</sup>, &nbsp; 
+            <a href='https://www.stats.ox.ac.uk/~teh/'>Yee Whye Teh</a><sup>3</sup>, &nbsp;
+            <a href='https://jonathan-schwarz.github.io/'>Jonathan Richard Schwarz</a><sup>4</sup>°,&nbsp;
+            <a href="https://wei-ying.net/">Ying Wei</a><sup>5</sup>° &nbsp; 
+        </div>
+
+        <br>
+                
+        <span style="font-size:16px; text-align: center">
+            <sup>1</sup> CityU Hong Kong &nbsp; &nbsp; 
+            <sup>2</sup> KAIST &nbsp; &nbsp; 
+            <sup>3</sup> University of Oxford&nbsp; 
+            <sup>4</sup> Harvard University &nbsp; 
+            <sup>5</sup> NTU &nbsp;
+        </span>
+        <br>
+        <br>
+        <span style="font-size:13px; text-align: center">
+            °Joint senior authorship, equal contribution &nbsp; &nbsp; 
+        </span>
+        
+        <br>
+        <br>
+
+        <div class="paper-btn-parent">
+            <a href="https://arxiv.org/abs/2403.08477">
+            [<b>arXiv</b>]
+            </a>
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <a href="https://github.com/szc12153/sparse_meta_tuning">
+            [<b>Code</b>]
+            </a>
+            </div>
+        </center>
+        </tr>
+        </table>
+
+    <div id="outline-container-orgc5d597d" class="outline-2">
+    <h2 id="orgc5d597d">Abstract</h2>
+    <div class="outline-text-2" id="text-orgc5d597d">
+    <p style="text-align:justify">
+        Conventional wisdom suggests parameter efficient fine-tuning of foundation models as the
+state-of-the-art method for transfer learning in
+vision, replacing the rich literature of alternatives
+such as meta-learning. In trying to harness the
+best of both worlds, meta-tuning introduces a subsequent optimization stage of foundation models
+but has so far only shown limited success and
+crucially tends to underperform on out-of-distribution
+(OOD) tasks. In this paper, we introduce Sparse
+MetA-Tuning (SMAT), a method inspired by
+sparse mixture-of-experts approaches and trained
+to isolate subsets of pre-trained parameters automatically for meta-tuning on each task. SMAT
+successfully overcomes OOD sensitivity and
+delivers on the promise of enhancing the transfer
+abilities of vision foundation models beyond
+parameter-efficient finetuning. We establish new
+state-of-the-art results on a challenging combination of Meta-Dataset augmented with additional
+OOD tasks in both zero-shot and gradient-based
+adaptation settings. In addition, we provide a
+thorough analysis of the superiority of learned
+over hand-designed sparsity patterns for sparse
+expert methods and the pivotal importance of the
+sparsity level in balancing between in-domain
+and out-of-domain generalization.
+    </p>
+    <br>
+    <div id="outline-container-orgc5d597d" class="outline-2">
+    <h2 id="orgc5d597d">Method</h2>
+    <div class="outline-text-2" id="text-orgc5d597d">
+    <p style="text-align:justify">
+        SMAT meta-learns a shared knowledge pool 
+        consists of 
+        sparse interpolated experts characterized by a common, learnable set of dense parameters 
+        and distinct, learnable sets of gating masks 
+        with sparsity constraints. To construct each task-specific model 
+        for both meta-training and inference, (1) SMAT first combines experts via a weighted-sum with merging weights 
+        generated by a meta-learned hypernetwork 
+        based on the task's support set 
+       . (2) The experts are then subsequently interpolated with the frozen pre-trained model 
+        to enhance both in-distribution (ID) and out-of-distribution (OOD) generalization performance. Alongside (3) the query prediction loss 
+       , (4) knowledge distillation with task-specific dense teachers 
+        is introduced during meta-training to promote specialization and cooperation of the sparse interpolated experts, ensuring optimization success.
+    </p>
+    <div class="button-container">
+        <button class="button-80" role="button" id="clickme" onmouseout="resetImage('methodoverview')" onclick="changeImage('methodoverview','resources/overview.png')" onmouseover="previewImage('methodoverview','resources/overview.png');">Overview</button>
+        <button class="button-80" role="button" id="clickme" onmouseout="resetImage('methodoverview')" onclick="changeImage('methodoverview','resources/pool.png')" onmouseover="previewImage('methodoverview','resources/pool.png');">Knowledge pool</button>
+        <button class="button-80" role="button" id="clickme" onmouseout="resetImage('methodoverview')" onclick="changeImage('methodoverview','resources/merge.png')" onmouseover="previewImage('methodoverview','resources/merge.png');">Expert selection</button>
+        <button class="button-80" role="button" id="clickme" onmouseout="resetImage('methodoverview')" onclick="changeImage('methodoverview','resources/teacher.png')" onmouseover="previewImage('methodoverview','resources/teacher.png');">Dense teacher</button>
+        <button class="button-80" role="button" id="clickme" onmouseout="resetImage('methodoverview')" onclick="changeImage('methodoverview','resources/inference.png')" onmouseover="previewImage('methodoverview','resources/inference.png');">Test-time inference</button>
+        
+    </div>
+   <figure class="figure-slarge">
+        <img id="methodoverview" src="resources/overview.png" />
+    </figure>	
+    <br>
+
+    <div id="outline-container-orgc5d597d" class="outline-2">
+    <h2 id="orgc5d597d">Experimental Results</h2>
+    <div class="outline-text-2" id="text-orgc5d597d">
+    
+    <figure class="figure-large">
+  	 <img src="resources/results_table.png">
+	</figure>	
+	<p style="text-align:justify">
+        <strong>Few-shot testing performance</strong>:
+        We report the average in-distribution (ID) and out-of-distribution (OOD) few-shot testing performance of the meta-tuned models on the Meta-dataset benchmark augmented with additional OOD few-shot learning tasks. The results highlight that SMAT consistently achieves the best generalization performance among all methods across all evaluation settings, including direct inference without fine-tuning, gradient-based fine-tuning by fine-tuning the full model, and parameter-efficient fine-tuning using LoRA.
+	</p>
+	<br>
+    <br>
+
+
+    <figure class="figure-large">
+  	     <img src="resources/speedup.png">
+	</figure>
+	<p style="text-align:justify"><strong>Learning speedup</strong> (Left): SMAT yields better ID results with an attractive learning speedup while achieves and maintains high OOD generalization performance. </p>
+    <p style="text-align:justify"> <strong>Meta-tuning task diversities</strong> (Right): SMAT achieves both improved ID and OOD generalization performance over the baselines under all evaluated meta-tuning settings with various training task diversities.</p> 
+    <br>
+    <br>
+
+    <figure class="figure-large">
+        <img src="resources/tradeoff.png">
+    </figure>
+	<p style="text-align:justify"><strong>Sparsity finds optimal ID vs OOD trade-offs</strong> (Left): The sparsity level of experts essentially constrols the realtive strength of interpoaltion between pre-trained model and the meta-trained experts, therefore, establishes a trade-off between ID and OOD performance, with an optimal point usually existing between the extremes. </p>
+    <p style="text-align:justify"> <strong>Sparsity encourages specialization</strong> (Right):	Higher sparsity in SMAT potentially induces better meta-gradient alignment during meta-tuning, indicating a sign of development for each expert into a highly specialized region of parameters.</p>
+	<br>
+    <br>
+
+	<figure class="figure-slarge">
+  	     <img src="resources/visualization.png">
+	</figure>
+
+    <p style="text-align:justify"><strong>Meta-learned expert sparsity patterns</strong> (a-b,d): (a-b) Expert capacity (i.e., the number of non-zero parameters remaining after meta-tuning) grouped by (a) layer types, and (b) layer depth. (d) Overlap (of non-zero regions) between expert masks. The results indicate a noticeable deviation in meta-learned sparsity patterns among experts exists.</p>
+    <p style="text-align:justify"><strong>Implied task relationship</strong> (c): A dendrogram, produced based on expert selection scores, clearly shows hierarchical clustering according
+        to visual similarities between tasks.
+    <br>
+
+    <div id="outline-container-orgc5d597d" class="outline-2">
+    <h2 id="orgc5d597d">SMAT Explained</h2>
+    <div class="outline-text-2" id="text-orgc5d597d">
+    
+    <br />
+    <div class="responsive-iframe">
+        <iframe src="https://www.youtube.com/embed/7WG6-aYBgX4" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+    </div>
+
+    <div id="outline-container-orgc5d597d" class="outline-2">
+    <h2 id="orgc5d597d">Citation</h2>
+    <table width="100%" border="0" cellspacing="1" cellpadding="1" align="center">        
+        <tr>
+            <td width="100%" style="background-color: #EEEEEE;">
+                <div style="font-size:14px;">
+                    <tt>
+                        @article{chen2024unleashing,<br>
+						&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;title={Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts},<br>
+			    		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;author={Shengzhuang Chen and Jihoon Tack and Yunqiao Yang and Yee Whye Teh and Jonathan Richard Schwarz and Ying Wei},<br>
+			    		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;journal={arXiv preprint arXiv:2403.08477},<br>
+			    		&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;year={2024},<br>
+			    		}
+                    </tt>
+                </div>
+            </td>
+        </tr>
+    </table>
+</div>
+
+<h2 id="orgc5d597d"></h2>
+
+</body>
+</html>
+
