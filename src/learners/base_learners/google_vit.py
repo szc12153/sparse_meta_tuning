@@ -1,4 +1,5 @@
 import copy
+import logging
 import math
 
 from os.path import join as pjoin
@@ -32,10 +33,26 @@ def get_b16_config():
     return config
 
 
+def get_l16_config():
+    """Returns the ViT-L/16 configuration."""
+    config = ml_collections.ConfigDict()
+    config.patches = ml_collections.ConfigDict({'size': (16, 16)})
+    config.hidden_size = 1024
+    config.transformer = ml_collections.ConfigDict()
+    config.transformer.mlp_dim = 4096
+    config.transformer.num_heads = 16
+    config.transformer.num_layers = 24
+    config.transformer.attention_dropout_rate = 0.0
+    config.transformer.dropout_rate = 0.1
+    config.classifier = 'token'
+    config.representation_size = None
+    return config
+
+
 CONFIGS = {
     'ViT-B_16': get_b16_config(),
     #'ViT-B_32': get_b32_config(),
-    #'ViT-L_16': get_l16_config(),
+    'ViT-L_16': get_l16_config(),
     #'ViT-L_32': get_l32_config(),
     #'ViT-H_14': get_h14_config(),
     #'R50-ViT-B_16': get_r50_b16_config(),
@@ -275,21 +292,23 @@ class Block(nn.Module):
 
 
 class Encoder(nn.Module):
-    def __init__(self, config, vis, devices):
+    def __init__(self, config, vis):
         super(Encoder, self).__init__()
         self.vis = vis
         self.layer = nn.ModuleList()
         self.encoder_norm = LayerNorm(config.hidden_size, eps=1e-6)
-        self.input_device, self.output_device = devices
         for _ in range(config.transformer["num_layers"]):
             layer = Block(config, vis)
             self.layer.append(copy.deepcopy(layer))
+        self._devices = [f"cuda:{i}" for i in range(torch.cuda.device_count())]
 
     def forward(self, hidden_states):
+        _BLK_PER_DEVICE = 8
         attn_weights = []
-        for idx, layer_block in enumerate(self.layer):
-            if idx == len(self.layer) // 2 and hidden_states.is_cuda:
-                hidden_states = hidden_states.to(self.output_device)
+        for i , layer_block in enumerate(self.layer):
+            _use_device = not ( i % _BLK_PER_DEVICE )
+            if _use_device and hidden_states.is_cuda:
+                hidden_states = hidden_states.to(self._devices[i // _BLK_PER_DEVICE])
             hidden_states, weights = layer_block(hidden_states)
             if self.vis:
                 attn_weights.append(weights)
@@ -298,10 +317,10 @@ class Encoder(nn.Module):
 
 
 class Transformer(nn.Module):
-    def __init__(self, config, img_size, vis, devices):
+    def __init__(self, config, img_size, vis):
         super(Transformer, self).__init__()
         self.embeddings = Embeddings(config, img_size=img_size)
-        self.encoder = Encoder(config, vis, devices)
+        self.encoder = Encoder(config, vis)
 
     def forward(self, input_ids):
         embedding_output = self.embeddings(input_ids)
@@ -309,14 +328,13 @@ class Transformer(nn.Module):
         return encoded, attn_weights
 
 
-class VisionTransformer(nn.Module):
-    def __init__(self, config, img_size=224, vis=False, devices=["cuda:0","cuda:0"]):
-        super(VisionTransformer, self).__init__()
+class GoogleViTModels(nn.Module):
+    def __init__(self, config, img_size=224, vis=False):
+        super(GoogleViTModels, self).__init__()
         #self.num_classes = num_classes
         #self.classifier = config.classifier
         self.embed_dim = config.hidden_size
-
-        self.transformer = Transformer(config, img_size, vis, devices=devices)
+        self.transformer = Transformer(config, img_size, vis)
         #self.head = Linear(config.hidden_size, num_classes)
 
     def forward(self, x, labels=None, use_patches=False):
@@ -389,8 +407,3 @@ class VisionTransformer(nn.Module):
                 for bname, block in self.transformer.embeddings.hybrid_model.body.named_children():
                     for uname, unit in block.named_children():
                         unit.load_from(weights, n_block=bname, n_unit=uname)
-
-
-def vit_base(**kwargs):
-    model = VisionTransformer(config=CONFIGS["ViT-B_16"], **kwargs)
-    return model

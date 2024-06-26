@@ -1,7 +1,13 @@
 
 
 ##  Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts
-This repository contains a pytorch implementation for the paper: Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts
+This repository contains a pytorch implementation for the paper at ICML 2024: Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts
+### Project Website
+Visit our website at https://szc12153.github.io/sparse_meta_tuning for more details and to watch a short video discussion on SMAT! :blush:
+
+### Meta-tuned SMAT checkpoints
+We are releasing our meta-tuned SMAT checkpoints for pre-trained Vision Transformer backbones of various scales on [HuggingFace](https://huggingface.co/collections/szcjerry/meta-tuned-smat-vits-665823383b2fcd0255363d4e). These checkpoints can be easily accessed by using the API call *SparseInterpolatedExperts.from_pretrained('model-name-on-huggingface')*.
+
 ### Setups
 The code requires:
 - python 3.8
@@ -11,7 +17,7 @@ Please see *requirements.txt* for other required packages.
 
 ### Datasets
 
-For meta-training and meta-testing on the [Meta-dataset](https://github.com/google-research/meta-dataset) benchmark, please follow the instruction in [PMF](https://github.com/hushell/pmf_cvpr22?tab=readme-ov-file#meta-dataset) first to download the datasets in .h5 format.
+For meta-training and meta-testing on the [Meta-Dataset](https://github.com/google-research/meta-dataset) benchmark, please follow the instruction in [PMF](https://github.com/hushell/pmf_cvpr22?tab=readme-ov-file#meta-dataset) first to download the datasets in .h5 format.
 
 ### Experiments
 #### Before meta-training
@@ -63,5 +69,5 @@ If you have any question please feel free to **Contact** Shengzhuang Chen **Emai
 
 ### Acknowledgement
 We extend our gratitude to the authors/creators of the following open-source projects: 
-- Meta-dataset (https://github.com/google-research/meta-dataset)
-- PMF (https://github.com/hushell/pmf_cvpr22?tab=readme-ov-file#meta-dataset)
+- Meta-Dataset (https://github.com/google-research/meta-dataset)
+- PMF (https://github.com/hushell/pmf_cvpr22)

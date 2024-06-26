@@ -17,12 +17,13 @@ logger = get_logger(__name__)
 
 
 class DeltaParams(nn.Module):
-    def __init__(self, meta_params):
+    def __init__(self, meta_params, fix_embeddings):
         super(DeltaParams, self).__init__()
         self.phis = torch.nn.ParameterList()
         self.param_name_2_phi = OrderedDict()
         for i, (n,p) in enumerate(meta_params):
-            self.phis.append(torch.nn.Parameter(p.detach().clone(),requires_grad=True))
+            _fix_embeddings = fix_embeddings and "embeddings." in n
+            self.phis.append(torch.nn.Parameter(p.detach().clone(),requires_grad=not _fix_embeddings))
             self.param_name_2_phi[n] = i
         for p in self.phis:
             nn.init.zeros_(p)
@@ -32,7 +33,7 @@ class DeltaParams(nn.Module):
         logger.info(f"Total Number of Parameters in the delta_param hypernetwork :{p_count}")
 
     def get_fast_params(self):
-        return {n: p.clone().requires_grad_(True) for n, p in self.named_parameters()}
+        return {n: p.clone() for n, p in self.named_parameters()}
 
     def forward(self,phis:dict):
         """
@@ -72,8 +73,9 @@ class MasksCollection(nn.Module):
     def __init__(self, meta_params, num_masks, hid_dim, init_dropout_rate=0.0, structured_sparsity=False, bias_sparsity=True, stochastic_mask=True, fix_embeddigs=False, spectral_norm=True):
         super(MasksCollection, self).__init__()
         from src.learners.base_learners.torchhub_vit import Block
-        self.input_device = "cuda:0"
-        self.output_device = "cuda:1" if torch.cuda.device_count()>1 else "cuda:0"
+        self._devices = [f"cuda:{i}" for i in range(torch.cuda.device_count())]
+        self.output_device = self._devices[-1]
+        self.input_device = self._devices[0] 
         self.hid_dim = hid_dim
         self.key_dim = hid_dim
         self.epsilon = 1e-6
@@ -128,17 +130,17 @@ class MasksCollection(nn.Module):
             if structured_sparsity:
                 expand_to_shape = (*p.shape, num_masks)
                 if fix_embeddigs and ".embeddings." in param_n:
-                    log_alpha = torch.nn.Parameter(p.new(*p.shape, num_masks).normal_(log_alpha_init, log_alpha_init_std), requires_grad=True)
-                    dim_scale = 1.0
+                    log_alpha = torch.nn.Parameter(p.new(1, num_masks).normal_(log_alpha_init, log_alpha_init_std), requires_grad=False)
+                    dim_scale = p.numel()
                 elif ".weight" in param_n:
                     if p.dim() == 1:
                         log_alpha = torch.nn.Parameter(p.new(*p.shape, num_masks).normal_(log_alpha_init, log_alpha_init_std), requires_grad=True)
                         dim_scale = 1.0
                     elif p.dim() == 2:  # output, input
-                        log_alpha = torch.nn.Parameter(torch.Tensor(1, p.size(1), num_masks).normal_(log_alpha_init, log_alpha_init_std), requires_grad=True)
+                        log_alpha = torch.nn.Parameter(p.new(1, p.size(1), num_masks).normal_(log_alpha_init, log_alpha_init_std), requires_grad=True)
                         dim_scale = p.size(0)
                     elif p.dim() == 4:  # conv
-                        log_alpha = torch.nn.Parameter(torch.Tensor(p.size(0), 1, 1, 1, num_masks).normal_(log_alpha_init, log_alpha_init_std), requires_grad=True)
+                        log_alpha = torch.nn.Parameter(p.new(p.size(0), 1, 1, 1, num_masks).normal_(log_alpha_init, log_alpha_init_std), requires_grad=True)
                         dim_scale = p.numel() / p.size(0)
                         # bias_with_tied_masks.append((param_n.replace("weight", "bias"),log_alpha_idx))
                     else:
@@ -205,8 +207,8 @@ class MasksCollection(nn.Module):
             log_alpha_idx, dim_scale, expand_to_shape = idx_scale_reshape
             if self.fix_embeddings and ".embeddings." in net_param_name:
                 log_alpha = log_alphas[f"log_alphas.{log_alpha_idx}"]
-                masks[net_param_name] = torch.zeros_like(log_alpha)
-                non_zero += 0  # embeddings is off, do nothing
+                masks[net_param_name] = torch.zeros(expand_to_shape, device=log_alpha.device, dtype=log_alpha.dtype)
+                non_zero += 0  # embeddings is off, all delta parameters are zeros
                 total += log_alpha.numel() * dim_scale
             elif any(k in net_param_name for k in on_aprior):  # always keep the head on, otherwise training is not stable
                 log_alpha = log_alphas[f"log_alphas.{log_alpha_idx}"]
@@ -372,24 +374,41 @@ class SparseInterpolatedExperts(nn.Module):
         for p in net.parameters():
             p.requires_grad_(False)
 
-        self.input_device = "cuda:0"
-        self.output_device = "cuda:1" if torch.cuda.device_count()>1 else "cuda:0"
+        self._devices = [f"cuda:{i}" for i in range(torch.cuda.device_count())]
+        self.output_device = self._devices[-1]
+        self.input_device = self._devices[0] 
+
         logger.info(f"{'DEVICE MAPPING':<60} || {'DEVICE':<15}")
-        _CUDA1_KEYS = ["head.",".norm.","encoder_norm."]+[f".blocks.{b}." for b in range(6,12)] +[f".layer.{b}." for b in range(6,12)]
+        _CUDA_KEYS = ["embeddings.",]
         for n,p in net.named_parameters():
             p.requires_grad_(False)
-            if any(_ in n for _ in _CUDA1_KEYS):
+            if any(_ in n for _ in _CUDA_KEYS):
+                p.data = p.data.to(self.input_device)
+                logger.info(f"{n:<60} || {self.output_device:<15}")
+
+        for cuda_i, _use_device in enumerate(self._devices):
+            _BLK_PER_DEVICE = 8
+            _CUDA_KEYS = [f".blocks.{b}." for b in range(cuda_i * _BLK_PER_DEVICE , _BLK_PER_DEVICE + cuda_i* _BLK_PER_DEVICE)] \
+                +[f".layer.{b}." for b in range(cuda_i * _BLK_PER_DEVICE , _BLK_PER_DEVICE + cuda_i* _BLK_PER_DEVICE)]
+            for n,p in net.named_parameters():
+                p.requires_grad_(False)
+                if any(_ in n for _ in _CUDA_KEYS):
+                    p.data = p.data.to(_use_device)
+                    logger.info(f"{n:<60} || {_use_device:<15}")
+        
+        _CUDA_KEYS = ["head.",".norm.","encoder_norm."]
+        for n,p in net.named_parameters():
+            p.requires_grad_(False)
+            if any(_ in n for _ in _CUDA_KEYS):
                 p.data = p.data.to(self.output_device)
                 logger.info(f"{n:<60} || {self.output_device:<15}")
-            else:
-                p.data = p.data.to(self.input_device)
-                logger.info(f"{n:<60} || {self.input_device:<15}")
 
         self.net = net
         self.nonparametric_head = net.nonparametric_head
         self.inner_param_names = {n: 1 for n, _ in net.inner_meta_params()}
         # delta_params wil alwways include all trainable parameters
-        self.delta_hypernet = DeltaParams(meta_params=net.outer_meta_params())
+        self.delta_hypernet = DeltaParams(meta_params=net.outer_meta_params(), 
+                                          fix_embeddings=args.meta_learner.sparsity.fix_embeddings)
         self.num_masks = args.meta_learner.sparsity.num_experts
         self.hid_dim = net.feat_dim
         self.mask_hypernet = MasksCollection(meta_params=list(net.outer_meta_params()),
@@ -634,10 +653,10 @@ class SparseInterpolatedExperts(nn.Module):
         #####################
         ### teacher model ###
         #####################
-        teach_params = {n: p.detach().clone().requires_grad_(True) for n, p in fast_net_params.items()}
+        teach_params = {n: p.detach().clone().requires_grad_(True) for n, p in fast_net_params.items() if "embeddings." not in n or not self.args.meta_learner.sparsity.fix_embeddings}
         max_teach_steps = 1
         for teach_step in range(max_teach_steps + 1):
-            target_y_q_pred = functional_call(self.net, teach_params, (x_q,), strict=True)
+            target_y_q_pred = functional_call(self.net, teach_params, (x_q,), strict=False)
             if teach_step == max_teach_steps:
                 teach_query_acc = accuracy(target_y_q_pred.detach(), y_q) # - accuracy(y_q_pred.detach(), y_q)
                 break

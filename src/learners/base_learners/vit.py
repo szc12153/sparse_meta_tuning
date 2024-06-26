@@ -62,6 +62,28 @@ class TorchHubTransformer(BaseLearner):
                     print(f'Cannot download pretrained weights from {url}. Check if `pip install wget` works.')
             encoder.load_from(np.load(pretrained_weights))
             print('Pretrained weights found at {}'.format(url))
+        elif args.base_learner.backbone=="ViT_Large_21k_torchhub":
+            from src.learners.base_learners.google_vit import GoogleViTModels, CONFIGS
+            import os
+            import numpy as np
+
+            config = CONFIGS['ViT-L_16']
+            encoder = GoogleViTModels(config, 224)
+
+            url = 'https://storage.googleapis.com/vit_models/imagenet21k/ViT-L_16.npz'
+            pretrained_weights = 'pretrained_ckpts/vit_large_patch16_224_in21k.npz'
+
+            if not os.path.exists(pretrained_weights):
+                try:
+                    import wget
+                    os.makedirs('pretrained_ckpts', exist_ok=True)
+                    wget.download(url, pretrained_weights)
+                except:
+                    print(f'Cannot download pretrained weights from {url}. Check if `pip install wget` works.')
+
+            encoder.load_from(np.load(pretrained_weights))
+            print('Pretrained weights found at {}'.format(pretrained_weights))
+
         else:
             raise NotImplementedError(f"backbone : {args.base_learner.backbone} is not implemented")
         return encoder

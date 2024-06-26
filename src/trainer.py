@@ -111,8 +111,8 @@ class MetaTrainer:
         self.devices = args.devices
         base_learner = get_base_learner(args)
         self.learner = get_meta_learner(base_learner, args)
-        if self.devices[0] == self.devices[1]:
-            self.learner.to(self.devices[0])
+        # if self.devices[0] == self.devices[1]:
+        #     self.learner.to(self.devices[0])
         self.opt = get_optimizer(self.learner.metatrain_parameters(), args.optimizer)
         self.scheduler = get_scheduler(self.opt, args.scheduler)
         ## using adam for hypernet
@@ -239,8 +239,9 @@ class MetaTrainer:
             x_s, y_s, x_q, y_q = task[:4]
             source_label = task[-1] if self.args.train.source_info else y_q.new((1,)).fill_(-1)
             with torch.cuda.amp.autocast(self.args.train.fp16):
-                res_dict = self.learner(x_s, y_s, x_q, y_q=None, source_label = source_label)
-            accuracy_traj.append((torch.stack(res_dict["y_q_pred"]).to(self.devices[1]).argmax(dim=-1)==y_q.to(self.devices[1]).view(1,-1)).float().mean(dim=-1)) # n_steps
+                with torch.no_grad():
+                    res_dict = self.learner(x_s, y_s, x_q, y_q=None, source_label = source_label)
+            accuracy_traj.append((torch.stack(res_dict["y_q_pred"]).to(self.devices[-1]).argmax(dim=-1)==y_q.to(self.devices[-1]).view(1,-1)).float().mean(dim=-1)) # n_steps
             self.datasetroutine.set_pbar_description(f'{dataset:<12} : sparsity : {res_dict["train/sparsity"][-1].item():.3f} accuracy {accuracy_traj[-1][-1].item():.3f}')
             # break in case if we have an infinite sequence
             if task_counter+1>=n_tasks:
@@ -287,6 +288,7 @@ class MetaTrainer:
             resume_epoch = 0
         _ = self._sanity_val_run(n_tasks=1)
         self.opt.zero_grad()
+        torch.cuda.empty_cache()
         if self.opt_hypernet:
             self.opt_hypernet.zero_grad()
 
@@ -456,10 +458,7 @@ if __name__ =="__main__":
             save_all_py_files_in_src(source_path='src', destination_path=configs.logging.exp_dir + '/code_timestamp')
             logfile_mode = "w"
 
-        if args.mp:
-            configs.devices = ["cuda:0","cuda:1"]
-        else:
-            configs.devices = ["cuda:0","cuda:0"]
+        configs.devices = [f"cuda:{i}" for i in range(torch.cuda.device_count())]
 
         logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                             level=logging.DEBUG if args.debug else logging.INFO,
