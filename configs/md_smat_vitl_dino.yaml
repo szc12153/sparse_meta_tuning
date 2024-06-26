@@ -1,0 +1,90 @@
+logging:
+  print_freq: 1
+  val_freq: 1  # in unit epoch
+  save_freq: 10
+  exp_dir: "experiments/md_smat_vitl_dino_lr5e3"
+
+meta_learner:
+  model: "SPARSE_INTERPOLATED_EXPERTS"
+  first_order: True
+  zero_trick: False  
+  num_inner_steps: 0
+  freeze_outer: [] 
+  freeze_inner: [] 
+  dense_teacher:
+    num_steps: 0
+    T: 2
+    lam: 0.25
+    lr: 0.005
+  sparsity:
+    structured: True
+    on_bias: True
+    target: 0.90
+    sparsify_where: ['sp_mod'] 
+    penalty_strength: 0
+    update_mask: False 
+    straight_through_relu: False
+    sample_mask_per_step: True
+    stochastic_mask: True
+    fix_embeddings: True
+    num_experts: 8
+  inner_lr:
+    lr: 0.001
+    structured: False
+    learnable: False
+    mask_inner_lr_multiplier: 100
+    per_param_group: False
+  outer_lr:
+    lr: 0.0005 
+    inner_lr_lr: 0.0005 # not used
+    mask_lr: 1000000 # large learning rate to encourage learning binary masks
+    lagrangian_lr: 0.00125
+
+base_learner:
+  backbone: "ViT_Large_21k_torchhub" 
+  head: "cosine"
+  feature_dim: 1600
+  bias: False  #
+  output_dim: 1
+  keep_bn_stats: False
+
+train:
+  datasets: ["ilsvrc_2012","aircraft",'cu_birds','quickdraw','dtd','fungi','vgg_flower','omniglot',]
+  finetune: "end2end"
+  max_patience: 50
+  max_epoch: 50
+  num_ways: 10
+  num_shots: 2
+  num_queries: 10
+  batchsize: 4
+  fp16: True
+  gradient_surgery: False
+  image_size: 128 
+  source_info: False
+
+test:
+  datasets: ['aircraft', 'cu_birds', 'dtd', 'fungi', 'ilsvrc_2012', 'omniglot', 'quickdraw', 'vgg_flower']
+  max_tasks: 500
+  num_ways: 10
+  num_shots: 2
+  num_queries: 15
+
+scheduler:
+  sched: 'cosine'
+  warmup_lr: 0.000001
+  min_lr: 0.000001
+  decay_epochs: 10 
+  warmup_epochs: 5
+  cooldown_epochs: 10
+  patience_epochs: 10
+  decay_rate: 0.1
+
+optimizer:
+  name: SGD
+  nesterov: False
+  momentum: 0.9
+  weight_decay: 0.00
+  lr: 0.005
+  max_grad_norm: 5
+
+
