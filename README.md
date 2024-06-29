@@ -2,6 +2,9 @@
 
 ##  Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts
 This repository contains a pytorch implementation for the paper at ICML 2024: Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts
+
+[![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/unleashing-the-power-of-meta-tuning-for-few/few-shot-image-classification-on-meta-dataset)](https://paperswithcode.com/sota/few-shot-image-classification-on-meta-dataset?p=unleashing-the-power-of-meta-tuning-for-few)
+
 ### Project Website
 Visit our website at https://szc12153.github.io/sparse_meta_tuning for more details and to watch a short video discussion on SMAT! :blush:
 
@@ -53,13 +56,13 @@ CUDA_VISIBLE_DEVICES=gpu_id python -m src.tests.md_few_shot --tasks md --hps --a
 ### Citation
 If you find this repository useful in your research, please consider citing our paper:
 ```
-@misc{chen2024unleashing,
-      title={Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts}, 
+@inproceedings{
+      chen2024unleashing,
+      title={Unleashing the Power of Meta-tuning for Few-shot Generalization Through Sparse Interpolated Experts},
       author={Shengzhuang Chen and Jihoon Tack and Yunqiao Yang and Yee Whye Teh and Jonathan Richard Schwarz and Ying Wei},
+      booktitle={Forty-first International Conference on Machine Learning},
       year={2024},
-      eprint={2403.08477},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV}
+      url={https://openreview.net/forum?id=QhHMx51ir6}
 }
 ```
 
